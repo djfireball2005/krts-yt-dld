@@ -13,7 +13,7 @@ echo  ╚████╔╝    ██║       ██║  ██║██║    
 echo   ╚██╔╝     ██║       ██║  ██║██║     ██║  ██║
 echo    ██║      ██║       ██████╔╝███████╗██████╔╝
 echo    ╚═╝      ╚═╝       ╚═════╝ ╚══════╝╚═════╝ 
-echo                 YT DL
+echo                 YT DLD
 echo                              By Kratostia
 echo.
 echo ==================== MENÚ PRINCIPAL =========================
@@ -22,7 +22,7 @@ echo [2] Descargar vídeo con cookies
 echo [3] Extraer audio en MP3
 echo [4] Descargar lista de reproducción
 echo [5] Elegir calidad de vídeo
-echo [6] Instalar ffmpeg
+echo [6] Instalar dependencias
 echo [7] Salir
 echo =============================================================
 set /p opcion=Selecciona una opción (1-7): 
@@ -32,7 +32,7 @@ if "%opcion%"=="2" goto url_con_cookies
 if "%opcion%"=="3" goto audio_mp3
 if "%opcion%"=="4" goto playlist
 if "%opcion%"=="5" goto calidad
-if "%opcion%"=="6" goto instalar_ffmpeg
+if "%opcion%"=="6" goto instalar_dependencias
 if "%opcion%"=="7" exit
 goto inicio
 
@@ -55,7 +55,7 @@ call :check_ffmpeg
 echo Introduce la URL del vídeo a descargar:
 set /p video_url=URL: 
 echo.
-echo ▶️ Descargando...
+echo Descargando...
 yt-dlp "%video_url%"
 echo.
 pause
@@ -71,7 +71,7 @@ echo.
 echo Introduce la ruta completa del archivo de cookies (ej: C:\cookies.txt):
 set /p cookie_file=Ruta cookies: 
 echo.
-echo ▶️ Descargando con cookies...
+echo Descargando con cookies...
 yt-dlp --cookies "%cookie_file%" "%video_url%"
 echo.
 pause
@@ -90,10 +90,10 @@ set "usar_cookies=!usar_cookies:~0,1!"
 if /i "!usar_cookies!"=="s" (
     echo Introduce la ruta del archivo de cookies:
     set /p cookie_file=Ruta cookies: 
-    echo ▶️ Extrayendo audio con cookies...
+    echo Extrayendo audio con cookies...
     yt-dlp --cookies "%cookie_file%" -x --audio-format mp3 "%video_url%"
 ) else (
-    echo ▶️ Extrayendo audio sin cookies...
+    echo Extrayendo audio sin cookies...
     yt-dlp -x --audio-format mp3 "%video_url%"
 )
 echo.
@@ -107,7 +107,7 @@ call :check_ffmpeg
 echo Introduce la URL de la lista de reproducción:
 set /p lista_url=URL: 
 echo.
-echo ▶️ Descargando lista completa...
+echo Descargando lista completa...
 yt-dlp "%lista_url%"
 echo.
 pause
@@ -131,7 +131,7 @@ if /i "!usar_cookies!"=="s" (
     echo.
     echo Introduce el ID del formato deseado (ej: 22):
     set /p formato_id=ID formato: 
-    echo ▶️ Descargando con formato %formato_id%...
+    echo Descargando con formato %formato_id%...
     yt-dlp --cookies "%cookie_file%" -f %formato_id% "%video_url%"
 ) else (
     echo Mostrando las opciones de calidad disponibles...
@@ -139,48 +139,50 @@ if /i "!usar_cookies!"=="s" (
     echo.
     echo Introduce el ID del formato deseado (ej: 22):
     set /p formato_id=ID formato: 
-    echo ▶️ Descargando con formato %formato_id%...
+    echo Descargando con formato %formato_id%...
     yt-dlp -f %formato_id% "%video_url%"
 )
 echo.
 pause
 goto inicio
 
-:instalar_ffmpeg
+:: Instalación de dependencias ffmpeg y yt-dlp
+:instalar_dependencias
 cls
-color 0C
-echo Comprobando si ffmpeg ya está instalado...
-where ffmpeg > nul 2>&1
-if %errorlevel%==0 (
-    echo ✔ ffmpeg ya está disponible en el sistema.
-    pause
-    goto inicio
+set instalar_ffmpeg=0
+set instalar_ytdlp=0
+
+:: Verificar yt-dlp
+if not exist "%YTDLP%" (
+    set instalar_ytdlp=1
 )
 
-echo ❌ ffmpeg no está instalado.
-echo.
-echo Descargando ffmpeg (build portable)...
-powershell -Command "Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip"
-if not exist ffmpeg.zip (
-    echo ❌ Error al descargar ffmpeg. Revisa tu conexión.
-    pause
-    goto inicio
+:: Verificar ffmpeg
+if not exist "%FFMPEG_EXE%" (
+    set instalar_ffmpeg=1
 )
 
-echo Extrayendo ffmpeg...
-powershell -Command "Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-bin"
-del ffmpeg.zip > nul
-
-for /d %%D in (ffmpeg-bin\ffmpeg-*) do (
-    set "ffmpeg_folder=%%D\bin"
-    goto found_ffmpeg
+if %instalar_ytdlp%==1 (
+    echo Descargando yt-dlp...
+    powershell -Command "Invoke-WebRequest -Uri https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -OutFile yt-dlp.exe"
 )
 
-:found_ffmpeg
-echo ffmpeg extraído correctamente.
-echo Añadiendo ffmpeg al PATH para esta sesión...
-set "PATH=!cd!\%ffmpeg_folder%;%PATH%"
+if %instalar_ffmpeg%==1 (
+    echo Descargando ffmpeg...
+    powershell -Command "Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip"
+    powershell -Command "Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-bin"
+    del ffmpeg.zip > nul
+    echo ffmpeg extraido en carpeta ffmpeg-bin.
+)
 
-echo ✔ ffmpeg instalado y listo para usar.
+:: Actualizar yt-dlp si ya existía
+if %instalar_ytdlp%==0 (
+    echo Actualizando yt-dlp...
+    %YTDLP% -U
+)
+
+echo Dependencias comprobadas e instaladas/actualizadas correctamente.
 pause
 goto inicio
+
+
